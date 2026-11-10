@@ -1,17 +1,21 @@
 package pl.warsztatpro.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServiceOrder {
     private Long id;
     private String orderNumber;
-    private long clientId;
+    private Long clientId;
     private long vehicleId;
     private LocalDate receivedDate;
     private LocalDate plannedCompletionDate;
     private LocalDate actualCompletionDate;
+    private LocalDateTime scheduledAt;
+    private int plannedDurationMinutes = 60;
+    private Long workshopId;
     private String faultDescription;
     private String workDescription;
     private ServiceOrderStatus status = ServiceOrderStatus.NOWE;
@@ -23,8 +27,8 @@ public class ServiceOrder {
     public void setId(Long id) { this.id = id; }
     public String getOrderNumber() { return orderNumber; }
     public void setOrderNumber(String orderNumber) { this.orderNumber = orderNumber; }
-    public long getClientId() { return clientId; }
-    public void setClientId(long clientId) { this.clientId = clientId; }
+    public Long getClientId() { return clientId; }
+    public void setClientId(Long clientId) { this.clientId = clientId; }
     public long getVehicleId() { return vehicleId; }
     public void setVehicleId(long vehicleId) { this.vehicleId = vehicleId; }
     public LocalDate getReceivedDate() { return receivedDate; }
@@ -33,6 +37,12 @@ public class ServiceOrder {
     public void setPlannedCompletionDate(LocalDate plannedCompletionDate) { this.plannedCompletionDate = plannedCompletionDate; }
     public LocalDate getActualCompletionDate() { return actualCompletionDate; }
     public void setActualCompletionDate(LocalDate actualCompletionDate) { this.actualCompletionDate = actualCompletionDate; }
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
+    public int getPlannedDurationMinutes() { return plannedDurationMinutes; }
+    public void setPlannedDurationMinutes(int plannedDurationMinutes) { this.plannedDurationMinutes = plannedDurationMinutes; }
+    public Long getWorkshopId() { return workshopId; }
+    public void setWorkshopId(Long workshopId) { this.workshopId = workshopId; }
     public String getFaultDescription() { return faultDescription; }
     public void setFaultDescription(String faultDescription) { this.faultDescription = faultDescription; }
     public String getWorkDescription() { return workDescription; }

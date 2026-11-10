@@ -147,7 +147,8 @@ public class VehicleRepository {
     }
 
     private static void bindVehicle(PreparedStatement statement, Vehicle vehicle) throws SQLException {
-        statement.setLong(1, vehicle.getClientId());
+        if (vehicle.getClientId() == null) statement.setNull(1, Types.INTEGER);
+        else statement.setLong(1, vehicle.getClientId());
         statement.setString(2, vehicle.getType().name());
         statement.setString(3, emptyToNull(vehicle.getVin()));
         statement.setString(4, vehicle.getRegistrationNumber());
@@ -180,7 +181,8 @@ public class VehicleRepository {
     private static Vehicle mapVehicle(ResultSet resultSet) throws SQLException {
         Vehicle vehicle = new Vehicle();
         vehicle.setId(resultSet.getLong("id"));
-        vehicle.setClientId(resultSet.getLong("client_id"));
+        long clientId = resultSet.getLong("client_id");
+        vehicle.setClientId(resultSet.wasNull() ? null : clientId);
         vehicle.setType(VehicleType.valueOf(resultSet.getString("type")));
         vehicle.setVin(resultSet.getString("vin"));
         vehicle.setRegistrationNumber(resultSet.getString("registration_number"));

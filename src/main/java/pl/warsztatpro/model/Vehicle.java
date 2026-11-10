@@ -123,7 +123,7 @@ public class Vehicle {
     @Override
     public String toString() {
         return "ID: " + id
-                + " | Klient: " + clientId
+                + " | Klient: " + (clientId == null ? "brak" : clientId)
                 + " | Typ: " + type
                 + " | VIN: " + display(vin)
                 + " | Rej.: " + registrationNumber

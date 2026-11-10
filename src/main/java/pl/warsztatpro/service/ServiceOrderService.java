@@ -5,6 +5,7 @@ import pl.warsztatpro.repository.*;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -16,16 +17,23 @@ public class ServiceOrderService {
     private final ClientRepository clients;
     private final VehicleRepository vehicles;
     private final ServiceRepository services;
+    private final WorkshopRepository workshops;
 
     public ServiceOrderService(ServiceOrderRepository orders, OrderItemRepository items, ClientRepository clients,
                                VehicleRepository vehicles, ServiceRepository services) {
-        this.orders=orders;this.items=items;this.clients=clients;this.vehicles=vehicles;this.services=services;
+        this(orders,items,clients,vehicles,services,new WorkshopRepository());
+    }
+    public ServiceOrderService(ServiceOrderRepository orders, OrderItemRepository items, ClientRepository clients,
+                               VehicleRepository vehicles, ServiceRepository services, WorkshopRepository workshops) {
+        this.orders=orders;this.items=items;this.clients=clients;this.vehicles=vehicles;this.services=services;this.workshops=workshops;
     }
     public ServiceOrder create(ServiceOrder order)throws SQLException{
         validateOrder(order);
-        if(clients.findById(order.getClientId()).isEmpty())throw new IllegalArgumentException("Nie znaleziono klienta.");
+        if(order.getClientId()!=null&&clients.findById(order.getClientId()).isEmpty())throw new IllegalArgumentException("Nie znaleziono klienta.");
         var vehicle=vehicles.findById(order.getVehicleId()).orElseThrow(()->new IllegalArgumentException("Nie znaleziono pojazdu."));
-        if(vehicle.getClientId()!=order.getClientId())throw new IllegalArgumentException("Wybrany pojazd nie jest przypisany do wskazanego klienta.");
+        if(order.getClientId()!=null&&!java.util.Objects.equals(vehicle.getClientId(),order.getClientId()))throw new IllegalArgumentException("Wybrany pojazd nie jest przypisany do wskazanego klienta.");
+        validateWorkshop(order.getWorkshopId(),null);
+        validateScheduleCollision(order);
         for (OrderItem item : order.getItems()) {
             pl.warsztatpro.model.Service catalog = services.findById(item.getServiceId())
                     .orElseThrow(() -> new IllegalArgumentException("Nie znaleziono usługi o ID: " + item.getServiceId()));
@@ -52,9 +60,12 @@ public class ServiceOrderService {
     }
     public ServiceOrder update(ServiceOrder order)throws SQLException{
         if(order.getId()==null||orders.findById(order.getId()).isEmpty())throw new IllegalArgumentException("Nie znaleziono zlecenia.");validateOrder(order);
-        if(clients.findById(order.getClientId()).isEmpty())throw new IllegalArgumentException("Nie znaleziono klienta.");
+        if(order.getClientId()!=null&&clients.findById(order.getClientId()).isEmpty())throw new IllegalArgumentException("Nie znaleziono klienta.");
         var vehicle=vehicles.findById(order.getVehicleId()).orElseThrow(()->new IllegalArgumentException("Nie znaleziono pojazdu."));
-        if(vehicle.getClientId()!=order.getClientId())throw new IllegalArgumentException("Pojazd nie jest przypisany do wskazanego klienta.");
+        if(order.getClientId()!=null&&!java.util.Objects.equals(vehicle.getClientId(),order.getClientId()))throw new IllegalArgumentException("Wybrany pojazd nie jest przypisany do wskazanego klienta.");
+        ServiceOrder previous=orders.findById(order.getId()).orElseThrow(()->new IllegalArgumentException("Nie znaleziono zlecenia."));
+        validateWorkshop(order.getWorkshopId(),previous.getWorkshopId());
+        validateScheduleCollision(order);
         if(!orders.update(order))throw new IllegalArgumentException("Nie udało się zaktualizować zlecenia.");return orders.findById(order.getId()).orElse(order);
     }
     public void changeStatus(long id,ServiceOrderStatus status)throws SQLException{
@@ -91,10 +102,26 @@ public class ServiceOrderService {
         if(!orders.removeItem(orderId,itemId))throw new IllegalArgumentException("Nie znaleziono pozycji.");
     }
     private ServiceOrder requireOrder(long id)throws SQLException{return orders.findById(id).orElseThrow(()->new IllegalArgumentException("Nie znaleziono zlecenia."));}
+    private void validateScheduleCollision(ServiceOrder order)throws SQLException{
+        if(order.getScheduledAt()==null||order.getWorkshopId()==null)return;
+        LocalDateTime start=order.getScheduledAt();LocalDateTime end=start.plusMinutes(order.getPlannedDurationMinutes());
+        for(ServiceOrder existing:orders.findScheduledByWorkshop(order.getWorkshopId())){
+            if(java.util.Objects.equals(existing.getId(),order.getId())||existing.getStatus()==ServiceOrderStatus.ANULOWANE)continue;
+            LocalDateTime otherStart=existing.getScheduledAt(),otherEnd=otherStart.plusMinutes(existing.getPlannedDurationMinutes());
+            if(start.isBefore(otherEnd)&&otherStart.isBefore(end))throw new IllegalArgumentException("Nowy termin zlecenia koliduje z innym zleceniem na tym stanowisku.");
+        }
+    }
+    private void validateWorkshop(Long workshopId,Long previousWorkshopId)throws SQLException{
+        if(workshopId==null)return;
+        var workshop=workshops.findById(workshopId).orElseThrow(()->new IllegalArgumentException("Nie znaleziono stanowiska."));
+        if(!workshop.isActive()&&!workshopId.equals(previousWorkshopId))throw new IllegalArgumentException("Można przypisać wyłącznie aktywne stanowisko.");
+    }
     private static void validateOrder(ServiceOrder o){
-        if(o.getClientId()<=0||o.getVehicleId()<=0)throw new IllegalArgumentException("Wskaż klienta i pojazd.");
+        if(o.getClientId()!=null&&o.getClientId()<=0||o.getVehicleId()<=0)throw new IllegalArgumentException("Wskaż prawidłowy pojazd.");
         if(o.getReceivedDate()==null)throw new IllegalArgumentException("Data przyjęcia jest wymagana.");
         if(o.getPlannedCompletionDate()!=null&&o.getPlannedCompletionDate().isBefore(o.getReceivedDate()))throw new IllegalArgumentException("Planowany termin nie może być wcześniejszy niż data przyjęcia.");
+        if(o.getScheduledAt()!=null&&o.getScheduledAt().isBefore(LocalDateTime.now()))throw new IllegalArgumentException("Termin wizyty nie może być w przeszłości.");
+        if(o.getPlannedDurationMinutes()<=0||o.getPlannedDurationMinutes()>1440)throw new IllegalArgumentException("Czas trwania wizyty musi wynosić od 1 do 1440 minut.");
         if(o.getFaultDescription()==null||o.getFaultDescription().isBlank())throw new IllegalArgumentException("Opis usterki jest wymagany.");
         if(o.getStatus()==null)throw new IllegalArgumentException("Status zlecenia jest wymagany.");
     }

@@ -17,8 +17,8 @@ public class ClientRepository {
 
     public Client insert(Client client) throws SQLException {
         String sql = """
-                INSERT INTO clients (type, first_name, last_name, company_name, phone, email, postal_code, street, city)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO clients (type, first_name, last_name, company_name, nip, phone, email, postal_code, street, city)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -48,6 +48,7 @@ public class ClientRepository {
                 WHERE LOWER(IFNULL(first_name, '')) LIKE ?
                    OR LOWER(IFNULL(last_name, '')) LIKE ?
                    OR LOWER(IFNULL(company_name, '')) LIKE ?
+                   OR LOWER(IFNULL(nip, '')) LIKE ?
                 ORDER BY id
                 """;
         String pattern = "%" + query.toLowerCase() + "%";
@@ -56,6 +57,7 @@ public class ClientRepository {
             statement.setString(1, pattern);
             statement.setString(2, pattern);
             statement.setString(3, pattern);
+            statement.setString(4, pattern);
             try (ResultSet resultSet = statement.executeQuery()) {
                 return mapAll(resultSet);
             }
@@ -79,14 +81,14 @@ public class ClientRepository {
     public boolean update(Client client) throws SQLException {
         String sql = """
                 UPDATE clients
-                SET type = ?, first_name = ?, last_name = ?, company_name = ?,
+                SET type = ?, first_name = ?, last_name = ?, company_name = ?, nip = ?,
                     phone = ?, email = ?, postal_code = ?, street = ?, city = ?
                 WHERE id = ?
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             bindClient(statement, client);
-            statement.setLong(10, client.getId());
+            statement.setLong(11, client.getId());
             return statement.executeUpdate() > 0;
         }
     }
@@ -105,11 +107,12 @@ public class ClientRepository {
         statement.setString(2, emptyToNull(client.getFirstName()));
         statement.setString(3, emptyToNull(client.getLastName()));
         statement.setString(4, emptyToNull(client.getCompanyName()));
-        statement.setString(5, client.getPhone());
-        statement.setString(6, client.getEmail());
-        statement.setString(7, client.getPostalCode());
-        statement.setString(8, client.getStreet());
-        statement.setString(9, client.getCity());
+        statement.setString(5, emptyToNull(client.getNip()));
+        statement.setString(6, client.getPhone());
+        statement.setString(7, client.getEmail());
+        statement.setString(8, client.getPostalCode());
+        statement.setString(9, client.getStreet());
+        statement.setString(10, client.getCity());
     }
 
     private static List<Client> mapAll(ResultSet resultSet) throws SQLException {
@@ -127,6 +130,7 @@ public class ClientRepository {
         client.setFirstName(resultSet.getString("first_name"));
         client.setLastName(resultSet.getString("last_name"));
         client.setCompanyName(resultSet.getString("company_name"));
+        client.setNip(resultSet.getString("nip"));
         client.setPhone(resultSet.getString("phone"));
         client.setEmail(resultSet.getString("email"));
         client.setPostalCode(resultSet.getString("postal_code"));

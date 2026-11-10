@@ -1,7 +1,10 @@
 package pl.warsztatpro.service;
 
 import pl.warsztatpro.model.Vehicle;
+import pl.warsztatpro.model.VehicleType;
 import pl.warsztatpro.repository.VehicleRepository;
+import pl.warsztatpro.model.VehicleTypeOption;
+import pl.warsztatpro.repository.VehicleTypeRepository;
 
 import java.sql.SQLException;
 import java.time.Year;
@@ -16,6 +19,7 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final ClientService clientService;
+    private final VehicleTypeRepository types = new VehicleTypeRepository();
 
     public VehicleService(VehicleRepository vehicleRepository, ClientService clientService) {
         this.vehicleRepository = vehicleRepository;
@@ -29,6 +33,12 @@ public class VehicleService {
 
     public List<Vehicle> findAll() throws SQLException {
         return vehicleRepository.findAll();
+    }
+
+    public List<VehicleTypeOption> vehicleTypes() throws SQLException { return types.findAll(); }
+
+    public void setVehicleTypeActive(VehicleType type, boolean active) throws SQLException {
+        if (!types.setActive(type, active)) throw new IllegalArgumentException("Nie znaleziono typu pojazdu.");
     }
 
     public List<Vehicle> search(String query) throws SQLException {
@@ -77,15 +87,19 @@ public class VehicleService {
     }
 
     public void validate(Vehicle vehicle) throws SQLException {
-        if (vehicle.getClientId() == null || vehicle.getClientId() <= 0) {
-            throw new IllegalArgumentException("ID właściciela jest wymagane.");
+        if (vehicle.getClientId() != null && vehicle.getClientId() <= 0) {
+            throw new IllegalArgumentException("Wybierz istniejącego klienta albo pozostaw pole puste.");
         }
-        if (clientService.findById(vehicle.getClientId()).isEmpty()) {
-            throw new IllegalArgumentException("Nie znaleziono klienta o ID: " + vehicle.getClientId());
+        if (vehicle.getClientId() != null && clientService.findById(vehicle.getClientId()).isEmpty()) {
+            throw new IllegalArgumentException("Nie znaleziono wybranego klienta.");
         }
         if (vehicle.getType() == null) {
             throw new IllegalArgumentException("Typ pojazdu jest wymagany.");
         }
+        boolean activeType = types.isActive(vehicle.getType());
+        boolean unchangedExistingType = vehicle.getId() != null
+                && vehicleRepository.findById(vehicle.getId()).map(existing -> existing.getType() == vehicle.getType()).orElse(false);
+        if (!activeType && !unchangedExistingType) throw new IllegalArgumentException("Ten typ pojazdu jest nieaktywny i nie można go przypisać.");
 
         requireText(vehicle.getRegistrationNumber(), "Numer rejestracyjny jest wymagany.");
         vehicle.setRegistrationNumber(normalizeRegistration(vehicle.getRegistrationNumber()));

@@ -7,6 +7,7 @@ public class Client {
     private String firstName;
     private String lastName;
     private String companyName;
+    private String nip;
     private String phone;
     private String email;
     private String postalCode;
@@ -52,6 +53,9 @@ public class Client {
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
     }
+
+    public String getNip() { return nip; }
+    public void setNip(String nip) { this.nip = nip; }
 
     public String getPhone() {
         return phone;
@@ -109,6 +113,7 @@ public class Client {
         return "ID: " + id
                 + " | Typ: " + type
                 + " | Nazwa: " + displayName()
+                + (nip == null || nip.isBlank() ? "" : " | NIP: " + nip)
                 + " | Tel: " + phone
                 + " | E-mail: " + email
                 + " | Adres: " + street + ", " + postalCode + " " + city;

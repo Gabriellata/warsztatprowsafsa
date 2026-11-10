@@ -42,7 +42,9 @@ public class ServiceService {
     private static void validate(Service service) {
         if (service.getName() == null || service.getName().isBlank()) throw new IllegalArgumentException("Nazwa usługi jest wymagana.");
         service.setName(service.getName().trim());
+        if (service.getName().length() > 120) throw new IllegalArgumentException("Nazwa usługi może mieć maksymalnie 120 znaków.");
         if (service.getDescription() != null && service.getDescription().isBlank()) service.setDescription(null);
+        if (service.getDescription() != null && service.getDescription().length() > 1000) throw new IllegalArgumentException("Opis usługi może mieć maksymalnie 1000 znaków.");
         if (service.getCategory() == null || !List.of(ServiceCategory.values()).contains(service.getCategory())) throw new IllegalArgumentException("Wybierz kategorię usługi.");
         if (service.getPriceSmall() < 0 || service.getPriceMedium() < 0 || service.getPriceLarge() < 0) throw new IllegalArgumentException("Ceny nie mogą być ujemne.");
     }

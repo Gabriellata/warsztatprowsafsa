@@ -15,6 +15,7 @@ public class ClientService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s.]+(?:\\.[^@\\s.]+)*@[^@\\s.]+(?:\\.[^@\\s.]+)+$");
     private static final Pattern POSTAL_CODE_PATTERN = Pattern.compile("^\\d{2}-\\d{3}$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[0-9][0-9 \\-]*$");
+    private static final int[] NIP_WEIGHTS = {6, 5, 7, 2, 3, 4, 5, 6, 7};
 
     private final ClientRepository repository;
     private final VehicleRepository vehicleRepository;
@@ -80,7 +81,15 @@ public class ClientService {
             requireText(client.getCompanyName(), "Nazwa firmy jest wymagana.");
             client.setFirstName(null);
             client.setLastName(null);
+            requireText(client.getNip(), "NIP jest wymagany dla firmy.");
+            String nip = client.getNip().replaceAll("[\\s-]", "");
+            if (!nip.matches("\\d{10}")) throw new IllegalArgumentException("NIP musi zawierać 10 cyfr.");
+            int checksum = 0;
+            for (int i = 0; i < NIP_WEIGHTS.length; i++) checksum += (nip.charAt(i) - '0') * NIP_WEIGHTS[i];
+            if (checksum % 11 != nip.charAt(9) - '0') throw new IllegalArgumentException("Nieprawidłowy numer NIP.");
+            client.setNip(nip);
         }
+        if (client.getType() == ClientType.OSOBA_PRYWATNA) client.setNip(null);
 
         requireText(client.getPhone(), "Numer telefonu jest wymagany.");
         String phone = client.getPhone().trim();
